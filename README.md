@@ -11,7 +11,7 @@
 
 ## Demo re:Invent
 
-*C1 = The worlds leading security services platform for all organizations builind in the cloud*
+*CloudOne = The worlds leading security services platform for all organizations building in the cloud*
 
 S3 scanning in AWS
 
@@ -82,6 +82,8 @@ The files to be scanned should be stored in a dedicated directory, e.g. `files2s
 Password: `infected`
 
 **!!! ATTENTION: REAL MALWARE !!!**
+
+Eicar test malware
 
 - [eicarcom2.zip](https://secure.eicar.org/eicarcom2.zip)
 - [eicar.com](https://secure.eicar.org/eicar.com)
