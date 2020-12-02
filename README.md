@@ -2,7 +2,7 @@
 
 - [Demo re:Invent 2020](#demo-reinvent-2020)
   - [Demo re:Invent](#demo-reinvent)
-  - [MacOS Screens](#macos-screens)
+  - [Demo Screens](#demo-screens)
   - [Preparation](#preparation)
   - [Malware Downloads](#malware-downloads)
   - [Demoing with Tags](#demoing-with-tags)
@@ -15,58 +15,60 @@
 
 S3 scanning in AWS
 
-1. Management and shortly Operations on Cloud One
+1. S3 scanning design principles
    1. Simplicity
-   2. Files never leave the AWS Account
-   3. Straight forward integration into own services
+   2. Speed
+   3. Files never leave the Account
+   4. Easy integration into own services
 2. Architecture
 3. Performance
 4. Demo
-   1. S3 scanning in AWS
-   2. Done via Cloud Formation Template
-   3. Deployed from the C1 FSS console  
-      Show:
-      1. Deploy
-      2. In the template, the only optional change you need to make is to define your temporary ingress bucket for all new files
-   4. The template also creates a SNS topic which you can watch for the result of the file scan
-   5. Show S3 Buckets
-   6. Cloud9
+   1. Deployment of the stack
+      1. Done via Cloud Formation Template
+      2. Deployed from the C1 FSS console  
+         Show:
+         1. Deploy
+         2. In the template, the only optional change you need to make is to define your temporary ingress bucket for all new files
+      3. The template also creates a SNS topic which you can watch for the result of the file scan
+      4. Show
+         1. S3 Buckets
+         2. SNS Topic
+   2. Cloud9
       1. `. ./setup.sh`
       2. `for i in * ; do aws s3 cp $i s3://${SCANNING_BUCKET}/$i ; done`
-   7. MCS
+   3. MCS
       1. `. ./setup.sh`
       2. `./tags.sh`
       3. `./postscanaction-logs.sh`
       4. `./scanner-logs.sh`
-   8. Emails
+   4. Email Notifications
 
-## MacOS Screens
+## Demo Screens
 
 1. Browser
-   1. Cloud One FSS
-   2. Cloud9 with malicious files
-2. Architecture and Scan Times
+   1. Cloud One
+   2. S3
+   3. SNS
+   4. Cloud9
+   5. FSS_Scan_Send_Email
+2. Images
+   1. Architecture
+   2. Scan Times
 3. iTerm with authenticated terminal to AWS (Fontsize 20)
 4. Mail filtered to `C1FSS Malware Detection`
 
 ## Preparation
 
+Be sure to update the `setup.sh` according to your environment before doing the demo. Then run
+
 ```sh
-./setup.sh
+. ./setup.sh
 ```
 
-or
+The files to be scanned should be stored in a dedicated directory, e.g. `files2scan`. Change into that directory and run
 
 ```sh
-export REGION=us-east-1
-export SCANNING_BUCKET=filestoragesecurity-scanning-bucket-a5sck3lb
-export PROMOTE_BUCKET=filestoragesecurity-promote-bucket-lfnfoiak
-export QUARANTINE_BUCKET=filestoragesecurity-quarantine-bucket-x0g3d5fu
-```
-
-```sh
-cd ./files2scan
-for i in * ; do aws s3 cp $i s3://${SCANNING_BUCKET}/$i ; done
+../upload.sh
 ```
 
 ## Malware Downloads
@@ -81,50 +83,28 @@ Password: `infected`
 
 **!!! ATTENTION: REAL MALWARE !!!**
 
+- [eicarcom2.zip](https://secure.eicar.org/eicarcom2.zip)
+- [eicar.com](https://secure.eicar.org/eicar.com)
+
 ## Demoing with Tags
+
+FSS base functionality is tagging the scanned files.
+
+Before demoing adapt the variables `MALWARE` and `CLEAN` within the script `./tags.sh`.
 
 ```sh
 ./tags.sh
 ```
 
-or
-
-```sh
-echo "aws s3api get-object-tagging --bucket ${QUARANTINE_BUCKET} --key eicarcom2.zip | jq -r '.TagSet'"
-aws s3api get-object-tagging --bucket ${QUARANTINE_BUCKET} --key eicarcom2.zip | jq -r '.TagSet'
-
-echo
-echo "aws s3api get-object-tagging --bucket ${PROMOTE_BUCKET} --key handler.py | jq -r '.TagSet'"
-aws s3api get-object-tagging --bucket ${PROMOTE_BUCKET} --key handler.py | jq -r '.TagSet'
-```
-
 ## Query Logs
 
-Let's query the scan results.
+Let's query the scan results. Within both scripts the query is filtered to the current day.
 
 ```sh
 ./postscanaction-logs.sh
 ```
 
-or
-
-```sh
-# PostScanAction Logs
-LOGGROUP_PSA=$(aws logs describe-log-groups --region ${REGION} | \
-  jq -r '.logGroups[] | select(.logGroupName | contains("PostScanAction")) | .logGroupName')
-
-# LOGSTREAM_PSA=$(aws logs describe-log-streams --region ${REGION} --log-group-name ${LOGGROUP_PSA} | \
-#   jq -r '.logStreams | sort_by(.lastEventTimestamp)[-1].logStreamName')
-
-LOGSTREAMS_PSA=$(aws logs describe-log-streams --region ${REGION} --log-group-name ${LOGGROUP_PSA} | \
-  jq -r '.logStreams[] | select(.logStreamName | startswith("2020/12/01")) | .logStreamName')
-
-for ls in ${LOGSTREAMS_PSA} ; do
-  echo "aws logs get-log-events --region ${REGION} --log-group-name ${LOGGROUP_PSA} --log-stream-name $ls"
-  aws logs get-log-events --region ${REGION} --log-group-name ${LOGGROUP_PSA} --log-stream-name $ls | \
-    jq -r '.events[].message' | grep Findings | jq .
-done
-```
+Explain the resulting JSONs (file, findings, ...)
 
 If you are interested on the total time spent to scan the files, we need to dig into a different log group, which you can identify with the "ScannerLambda" within its name.
 
@@ -132,40 +112,10 @@ If you are interested on the total time spent to scan the files, we need to dig 
 ./scanner-logs.sh
 ```
 
-or
-
-```sh
-# Scanner Logs
-LOGGROUP_SL=$(aws logs describe-log-groups --region ${REGION} | \
-  jq -r '.logGroups[] | select(.logGroupName | contains("ScannerLambda")) | .logGroupName')
-
-# LOGSTREAM_SL=$(aws logs describe-log-streams --region ${REGION} --log-group-name ${LOGGROUP_SL} | \
-#   jq -r '.logStreams | sort_by(.lastEventTimestamp)[-1].logStreamName')
-
-LOGSTREAMS_SL=$(aws logs describe-log-streams --region ${REGION} --log-group-name ${LOGGROUP_SL} | \
-  jq -r '.logStreams[] | select(.logStreamName | startswith("2020/12/01")) | .logStreamName')
-
-for ls in ${LOGSTREAMS_SL} ; do
-  echo "aws logs get-log-events --region ${REGION} --log-group-name ${LOGGROUP_SL} --log-stream-name $ls"
-  aws logs get-log-events --region ${REGION} --log-group-name ${LOGGROUP_SL} --log-stream-name $ls | \
-    jq -r '.events[] | select(.message | startswith("scan context") or startswith("scanner result") ) | .message' | \
-    sed -e 's/^scan\scontext:\s//' | sed -e 's/^scanner\sresult:\s//' | jq .
-done
-```
+Point to the SQS ID, which links always two events. One is showing the scan result, the corresponding the scantime.
 
 ## Clean Up
 
 ```sh
 ./cleanup.sh
-```
-
-or
-
-```sh
-for i in $(aws s3api list-objects --bucket ${SCANNING_BUCKET} | jq -r '.Contents[].Key') ; do \
-  aws s3api delete-object --bucket ${SCANNING_BUCKET} --key $i && echo file deleted $i ; done
-for i in $(aws s3api list-objects --bucket ${QUARANTINE_BUCKET} | jq -r '.Contents[].Key') ; do \
-  aws s3api delete-object --bucket ${QUARANTINE_BUCKET} --key $i && echo file deleted $i ; done
-for i in $(aws s3api list-objects --bucket ${PROMOTE_BUCKET} | jq -r '.Contents[].Key') ; do \
-  aws s3api delete-object --bucket ${PROMOTE_BUCKET} --key $i && echo file deleted $i ; done
 ```
