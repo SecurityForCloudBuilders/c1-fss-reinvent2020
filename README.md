@@ -47,7 +47,7 @@ S3 scanning in AWS
 
 1. Browser
    1. Cloud One
-   2. S3
+   2. S3 filtered to `-bucket-`
    3. SNS
    4. Cloud9
    5. FSS_Scan_Send_Email
